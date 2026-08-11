@@ -11,9 +11,14 @@
 // Both axes are plain SG90 servos (0-180 deg datasheet range); the usable
 // range is kept a safety margin inside that to avoid stalling the gears
 // against the mechanical end-stop. Mirrors B_ServoLaserMotor.ino.
-const SERVO_MIN_DEG = 10;
 const SERVO_MAX_DEG = 170;
 const SERVO_CENTER_DEG = 90;
+// Pan just spins the bracket around its own vertical axis, so it's safe
+// across the full SG90 range. Tilt is clamped further in - past ~53 deg
+// below horizontal the laser tube's far end would swing down into the case
+// (see buildRobot's geometry), so this keeps a safety margin above that.
+const PAN_MIN_DEG = 10;
+const TILT_MIN_DEG = 50;
 const MAX_SPEED_DEG_PER_SEC = 120; // deg/sec of travel at full joystick deflection
 const JOYSTICK_DEADZONE = 0.05;
 
@@ -237,9 +242,9 @@ function createRobotView(stageEl) {
     const dt = Math.min(0.1, (ts - lastTs) / 1000);
     lastTs = ts;
 
-    panAngle = Math.min(SERVO_MAX_DEG, Math.max(SERVO_MIN_DEG,
+    panAngle = Math.min(SERVO_MAX_DEG, Math.max(PAN_MIN_DEG,
       panAngle + deadzone(target.x) * MAX_SPEED_DEG_PER_SEC * dt));
-    tiltAngle = Math.min(SERVO_MAX_DEG, Math.max(SERVO_MIN_DEG,
+    tiltAngle = Math.min(SERVO_MAX_DEG, Math.max(TILT_MIN_DEG,
       tiltAngle - deadzone(target.y) * MAX_SPEED_DEG_PER_SEC * dt));
 
     fireShown += ((target.fire ? 1 : 0) - fireShown) * 0.35;

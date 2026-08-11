@@ -20,8 +20,11 @@ class ServoLaserMotor{
 
   // Both axes are plain SG90 servos: 0-180 deg is the datasheet range, but
   // driving all the way to the mechanical end-stop stalls/strains the gears,
-  // so the usable range is kept a safety margin inside it.
-  const double servoMinDeg = 10;
+  // so the usable range is kept a safety margin inside it. Tilt is clamped
+  // further in on the downward side, since tilting the laser tube too far
+  // down would swing it into the base case/bracket.
+  const double panMinDeg = 10;
+  const double tiltMinDeg = 50;
   const double servoMaxDeg = 170;
   const double servoCenterDeg = 90;
   // deg/sec of servo travel at full joystick deflection
@@ -47,8 +50,8 @@ public:
   // moving while the stick stays pushed. dtSeconds is the time since the
   // last call, used to integrate deflection into degrees moved.
   void updateJoystick(float nx, float ny, float dtSeconds){
-    this->servoX = constrain(this->servoX + nx * this->maxSpeedDegPerSec * dtSeconds, this->servoMinDeg, this->servoMaxDeg);
-    this->servoY = constrain(this->servoY + ny * this->maxSpeedDegPerSec * dtSeconds, this->servoMinDeg, this->servoMaxDeg);
+    this->servoX = constrain(this->servoX + nx * this->maxSpeedDegPerSec * dtSeconds, this->panMinDeg, this->servoMaxDeg);
+    this->servoY = constrain(this->servoY + ny * this->maxSpeedDegPerSec * dtSeconds, this->tiltMinDeg, this->servoMaxDeg);
     laserServoX.write(this->servoX);
     laserServoY.write(this->servoY);
   }
