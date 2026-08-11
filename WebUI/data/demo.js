@@ -140,25 +140,33 @@ function buildRobot(cam) {
   const gunCase = box(CASE.w, CASE.h, CASE.d, '#2e7d32');
   mount(cam, gunCase, 0, 0, 0);
 
-  // Pivot sitting on top of the case - this whole group rotates for PAN.
+  // The pan servo is bolted to the case - like a real servo, its body never
+  // rotates, only its horn (and whatever is mounted on it) does.
+  const panServo = servoSG90(SG90.w, SG90.h, SG90.d, '#1565c0');
+  mount(cam, panServo, 0, -CASE.h / 2 - SG90.h / 2, 0);
+
+  // Pivot at the pan servo's shaft (its top face) - this group rotates for
+  // PAN around the vertical axis, carrying the bracket and everything above
+  // it, but not the servo body itself.
   const panJoint = el('grp3d');
-  const panPivotY = -CASE.h / 2;
+  const panPivotY = -CASE.h / 2 - SG90.h;
   cam.appendChild(panJoint);
 
-  const panServo = servoSG90(SG90.w, SG90.h, SG90.d, '#1565c0');
-  mount(panJoint, panServo, 0, -SG90.h / 2, 0);
-
   const bracket = box(BRACKET.w, BRACKET.h, BRACKET.d, '#66bb6a');
-  mount(panJoint, bracket, 0, -SG90.h - BRACKET.h / 2, 0);
+  mount(panJoint, bracket, 0, -BRACKET.h / 2, 0);
 
-  // Pivot on top of the bracket - this group rotates for TILT, matching the
-  // second servo mounted above the first in the real build.
-  const tiltJoint = el('grp3d');
-  const tiltPivotY = -SG90.h - BRACKET.h;
-  mount(panJoint, tiltJoint, 0, tiltPivotY, 0);
-
+  // The tilt servo is bolted to the bracket, so it pans along with it, but
+  // (same rule as the pan servo) its own body does not spin on the tilt
+  // axis - only its horn does. Its shaft is perpendicular to the pan servo's
+  // (rotates around a horizontal axis instead of the vertical one).
   const tiltServo = servoSG90(SG90.w, SG90.h, SG90.d, '#1976d2');
-  mount(tiltJoint, tiltServo, 0, 0, 0);
+  const tiltPivotY = -BRACKET.h - SG90.h / 2;
+  mount(panJoint, tiltServo, 0, tiltPivotY, 0);
+
+  // Pivot at the tilt servo's shaft - this group rotates for TILT, carrying
+  // only the laser tube (not the tilt servo body).
+  const tiltJoint = el('grp3d');
+  mount(panJoint, tiltJoint, 0, tiltPivotY, 0);
 
   const laser = cylinderX(LASER.r, LASER.len, 14, '#7b1fa2');
   mount(tiltJoint, laser, SG90.w / 2 + LASER.len / 2, 0, 0);
