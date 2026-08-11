@@ -15,6 +15,9 @@ void setup() {
   laserServoX.attach(14);  // D5
   laserServoY.attach(12);  // D6
 
+  laserTrigger.setup();
+  LaserWebServer::setup();
+
   //task[0] = MotorTask( "Mattutino", 8, 0, 60,1);
   //task[1] = MotorTask( "Tarta mattinata", 11, 0, 60,1);
   //task[2] = MotorTask( "Pomeridiano", 15, 0, 60,1);
@@ -23,7 +26,9 @@ void setup() {
 }
 
 void loop() {
-  
+
+  LaserWebServer::loop();
+
   /*String result = UDPServerReadData();
   if(result != ""){
     Serial.print(result);

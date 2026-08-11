@@ -79,6 +79,11 @@ public:
         }
       }
   }
+  // nx, ny are normalized joystick coordinates in the -1..1 range
+  void handleJoystick(float nx, float ny){
+    this->goTo(nx * this->rangeX, ny * this->rangeY);
+  }
+
   void goTo(double X, double Y){
 
       // Calculate the Real Limit of points

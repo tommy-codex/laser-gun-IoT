@@ -14,4 +14,5 @@
 #include <Wire.h>               //I2C library
 #include <RtcDS3231.h>    //RTC library
 #include <PubSubClient.h>
+#include <WebSocketsServer.h>   //https://github.com/Links2004/arduinoWebSockets - web control pad
    
