@@ -122,7 +122,7 @@ class WifiManaged {
       }
     
       SerialComunication::info("WifiManaged", "WifiManagedInit", "local ip");
-      SerialComunication::info("WifiManaged", "WifiManagedInit", String(WiFi.localIP()));
+      SerialComunication::info("WifiManaged", "WifiManagedInit", WiFi.localIP().toString());
     } 
 };
 
