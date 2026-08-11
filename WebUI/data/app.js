@@ -1,6 +1,6 @@
 (function () {
   const state = { x: 0, y: 0, fire: false };
-  const robotView = createRobotView(document.getElementById('robotCanvas'));
+  const robotView = createRobotView(document.getElementById('stage'));
 
   const statusDot = document.getElementById('statusDot');
   const statusLabel = document.getElementById('statusLabel');
