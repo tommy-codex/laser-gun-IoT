@@ -1,9 +1,11 @@
 # Laser Gun - ESP driver
 
-This is the driver of ESP8266 for the Timed Laser Gun project (here the [WebInterface](https://github.com/enricoaleandri/LaserGun-IoT-web)), a remix of
+This is the driver of ESP8266 for the Laser Gun project, a remix of
 [Remotely controlled torch robot](http://www.thingiverse.com/thing:1598813) by JJRobots.
-Timed Laser Gun project is an automatic toy to let you cat play with laser pointer. I used an ESP to control the servo motors and a RTC to
-provide a correct timing to schedule the events.
+It is an automatic/remote controlled toy to let you (or your cat) play with a laser pointer.
+An ESP8266 drives the pan/tilt servo motors and a laser relay, and serves its own mobile web
+control pad (see [Web control pad](#web-control-pad) below) — no companion app or separate
+server needed. A RTC can also be used to schedule automatic events.
 
 
 ## Running on ESP NodeMCU
@@ -14,6 +16,7 @@ To programm the ESP, use the [Arduino IDE](https://www.arduino.cc/en/Main/Softwa
 * Now go on **Tools** > **Board:Arduino one** > **Board Managers**
 * Search For "esp8266" and Click Install ( it will take a while )
 * After installation go back on **Tools** > **Board:Arduino one** and click on **"NodeMCU 0.9 (ESP-12E Module)"**
+* Install the extra libraries needed by the sketch, via **Sketch** > **Include Library** > **Manage Libraries**: `ArduinoJson` (v5.x), `WiFiManager` (tzapu), `PubSubClient`, `RtcDS3231`, and [`WebSockets`](https://github.com/Links2004/arduinoWebSockets) (Links2004) — used by the web control pad
 * Now you can connect it and lunch the Load process
 
 
@@ -27,7 +30,7 @@ The hardware part is made by :
 I used an RTC, to have a real timinig and schedule the event, but you can also use a Virtual RTC to simulate the timer
 ( obviously it will not be precise like RTC but you can every day sync with a remote server and it will be enough ).
 
-[Here the class  I wrote](https://raw.githubusercontent.com/enricoaleandri/LaserGun-IoT-driver/master/example/VirtualRTC.ino) and here how to use it :
+[Here the class  I wrote](https://raw.githubusercontent.com/tommy-codex/laser-gun-IoT/master/example/VirtualRTC.ino) and here how to use it :
 ```
 void setup(){
   //String TimeNow = YourCustomTimeService.getStringTime(); // this in case you have a service that provide this string date format dd/mm/yyyy HH:mm:ss
@@ -67,6 +70,16 @@ Use this ( I not if is ugly I'm not a painter :D ) datasheet to build the hardwa
 * SDA -> D2
 * SCL -> D1
 
+##### Laser relay
+Not on the original datasheet below — this is the new addition needed for remote firing. Use a
+digital relay module (opto-isolated, 5V-logic-compatible), wire its coil side to the ESP and its
+NO (normally-open) contacts in parallel with the laser pointer's own physical push-button, so that
+closing the relay is the same as a finger pressing the button.
+* GND -> GND
+* Vcc -> Vcc ( +5 )
+* IN  -> D7
+* COM/NO contacts -> in parallel with the laser pointer's push-button terminals
+
 ##### Battery
 (do not plug microUSB and connect battery simultaneously, I didn't try but I suggest to do not try)
 
@@ -74,14 +87,35 @@ Use this ( I not if is ugly I'm not a painter :D ) datasheet to build the hardwa
 * Negative -> GND
 
 ##### Here the datasheet
-![alt tag](https://raw.githubusercontent.com/enricoaleandri/LaserGun-IoT-driver/master/build-datasheet.jpeg)
+![alt tag](https://raw.githubusercontent.com/tommy-codex/laser-gun-IoT/master/build-datasheet.jpeg)
+
+(this hand-drawn schematic predates the laser relay described above — the relay is a straightforward
+addition on the free D7 pin, wired as described in the "Laser relay" section)
 
 ##### Here my result
-![alt tag](https://raw.githubusercontent.com/enricoaleandri/LaserGun-IoT-driver/master/build-result.jpeg)
+![alt tag](https://raw.githubusercontent.com/tommy-codex/laser-gun-IoT/master/build-result.jpeg)
 
 
 Then put all in the base case, use 2/3 mm screws ( I'm not sure ) to fix the ESP to the base, and that's it, program it and enjoy it.
 
 
-##### USE the Laser Gun
-For the information about the functionality of ESP, refer the [WebInterface](https://github.com/enricoaleandri/LaserGun-IoT-web) documentation
+## Web control pad
+
+The ESP serves its own mobile control pad, no app or extra server needed:
+
+1. Flash the `Laser_Gun` sketch as described above (make sure the `WebSockets` library is installed).
+2. Upload the `WebUI/data` folder to the ESP's SPIFFS filesystem, using the Arduino IDE
+   ["Sketch Data Upload"](https://github.com/esp8266/arduino-esp8266fs-plugin) tool (point it at the
+   `Laser_Gun` sketch folder — the plugin looks for a sibling `data/` folder, so either use the
+   `WebUI/data` folder directly as your sketch data folder or copy it into `Laser_Gun/data`).
+3. Power on the gun and join the same WiFi network configured via WiFiManager (or its fallback
+   `LaserGUN-Enrico` access point if it hasn't been configured yet).
+4. On your phone, open `http://<esp-ip-address>/` in a browser.
+5. The pad opens in **Demo** mode by default (safe, no hardware involved) — a virtual robot on
+   screen reacts to the two sticks. Switch to **Hardware** mode to connect over WebSocket and
+   drive the real servos and laser relay:
+   * Right stick — aim (pan/tilt servos, 360° free movement within the configured range)
+   * Left stick — hold to fire the laser relay, release to stop
+
+The same page can also be opened straight from `WebUI/data/index.html` (e.g. via a local static
+server) to preview/tweak the Demo mode without any ESP connected at all.
