@@ -5,7 +5,7 @@ Servo laserServoY;
 class ServoLaserMotor{
 
   const double realLimitXY = 180;
-  //I'm gona set a virtual center, to calculate the limit from this to positive and negative range 
+  //I'm gona set a virtual center, to calculate the limit from this to positive and negative range
   double laserCenterX = 90;
   double laserCenterY = 90;
   // this is user to limit the range of motor to a specific margin
@@ -14,14 +14,43 @@ class ServoLaserMotor{
   //current virtual laser position
   double laserX, laserY;
   //current real servo motor grade position
-  double servoX, servoY;
+  double servoX = 90, servoY = 90;
   int LASER_X_PIN = 10;
   int LASER_Y_PIN = 9;
-  
-  
+
+  // Both axes are plain SG90 servos: 0-180 deg is the datasheet range, but
+  // driving all the way to the mechanical end-stop stalls/strains the gears,
+  // so the usable range is kept a safety margin inside it.
+  const double servoMinDeg = 10;
+  const double servoMaxDeg = 170;
+  const double servoCenterDeg = 90;
+  // deg/sec of servo travel at full joystick deflection
+  const double maxSpeedDegPerSec = 120;
+
 public:
   ServoLaserMotor(){
-   
+
+  }
+
+  // Writes both servos to their safe center position - call once at boot,
+  // before the servos are driven by anything else.
+  void setup(){
+    this->servoX = this->servoCenterDeg;
+    this->servoY = this->servoCenterDeg;
+    laserServoX.write(this->servoX);
+    laserServoY.write(this->servoY);
+  }
+
+  // Rate control: nx/ny (-1..1, joystick deflection) drive the servos at a
+  // speed proportional to the deflection, for as long as it is held, instead
+  // of jumping to an absolute position - this is what lets the aim keep
+  // moving while the stick stays pushed. dtSeconds is the time since the
+  // last call, used to integrate deflection into degrees moved.
+  void updateJoystick(float nx, float ny, float dtSeconds){
+    this->servoX = constrain(this->servoX + nx * this->maxSpeedDegPerSec * dtSeconds, this->servoMinDeg, this->servoMaxDeg);
+    this->servoY = constrain(this->servoY + ny * this->maxSpeedDegPerSec * dtSeconds, this->servoMinDeg, this->servoMaxDeg);
+    laserServoX.write(this->servoX);
+    laserServoY.write(this->servoY);
   }
   void setCenter(double newCenterX, double newCenterY){
     if(newCenterX+this->rangeX <= this->realLimitXY &&
@@ -79,11 +108,6 @@ public:
         }
       }
   }
-  // nx, ny are normalized joystick coordinates in the -1..1 range
-  void handleJoystick(float nx, float ny){
-    this->goTo(nx * this->rangeX, ny * this->rangeY);
-  }
-
   void goTo(double X, double Y){
 
       // Calculate the Real Limit of points

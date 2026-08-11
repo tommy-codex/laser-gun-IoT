@@ -114,7 +114,11 @@ The ESP serves its own mobile control pad, no app or extra server needed:
 5. The pad opens in **Demo** mode by default (safe, no hardware involved) — a virtual robot on
    screen reacts to the two sticks. Switch to **Hardware** mode to connect over WebSocket and
    drive the real servos and laser relay:
-   * Right stick — aim (pan/tilt servos, 360° free movement within the configured range)
+   * Right stick — aim: it's a **rate/speed control**, not a position control. Deflecting the
+     stick moves the pan/tilt servos and keeps moving them for as long as it's held (releasing it
+     stops the motion right where it is, it does not recenter). Both servos are plain SG90s, so
+     travel is clamped to a safe 10°-170° range well inside their 180° mechanical limit, to avoid
+     stalling the gears against the end-stop.
    * Left stick — hold to fire the laser relay, release to stop
 
 The same page can also be opened straight from `WebUI/data/index.html` (e.g. via a local static

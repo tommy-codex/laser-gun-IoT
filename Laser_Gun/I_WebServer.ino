@@ -2,12 +2,20 @@
 ESP8266WebServer webServer(80);
 WebSocketsServer webSocket(81);
 
+// Latest joystick deflection received from the pad (-1..1 each axis).
+// The actual servo motion is integrated from this at a fixed tick in
+// Z_main.ino's loop(), via ServoLaserMotor::updateJoystick(), so movement
+// keeps going for as long as the stick stays pushed rather than jumping to
+// a fixed position.
+float joyX = 0;
+float joyY = 0;
+
 class LaserWebServer{
 
   public:
 
   // Expected payloads from the control pad:
-  //  {"x":0.42,"y":-0.87}  -> right joystick, aim (normalized -1..1)
+  //  {"x":0.42,"y":-0.87}  -> right joystick, aim deflection (normalized -1..1)
   //  {"fire":true|false}   -> left trigger, laser relay
   static void onWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t * payload, size_t length){
     switch(type){
@@ -17,6 +25,8 @@ class LaserWebServer{
 
       case WStype_DISCONNECTED:
         SerialComunication::info("LaserWebServer", "onWebSocketEvent", "Client disconnected");
+        joyX = 0;
+        joyY = 0;
         laserTrigger.set(false);
         break;
 
@@ -28,7 +38,8 @@ class LaserWebServer{
           break;
         }
         if(json.containsKey("x") && json.containsKey("y")){
-          laserController.handleJoystick(json["x"], json["y"]);
+          joyX = json["x"];
+          joyY = json["y"];
         }
         if(json.containsKey("fire")){
           laserTrigger.set(json["fire"]);

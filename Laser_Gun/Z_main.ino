@@ -14,6 +14,7 @@ void setup() {
   
   laserServoX.attach(14);  // D5
   laserServoY.attach(12);  // D6
+  laserController.setup();
 
   laserTrigger.setup();
   LaserWebServer::setup();
@@ -28,6 +29,16 @@ void setup() {
 void loop() {
 
   LaserWebServer::loop();
+
+  // Fixed-tick integration of the joystick deflection into servo motion,
+  // decoupled from how often WebSocket messages actually arrive.
+  static unsigned long lastServoTick = 0;
+  unsigned long now = millis();
+  if (now - lastServoTick >= 20) {
+    float dt = (now - lastServoTick) / 1000.0;
+    laserController.updateJoystick(joyX, joyY, dt);
+    lastServoTick = now;
+  }
 
   /*String result = UDPServerReadData();
   if(result != ""){

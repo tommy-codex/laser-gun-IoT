@@ -2,14 +2,20 @@
 // external libraries) so it can be uploaded to the ESP's SPIFFS alongside
 // the rest of the pad without pulling in a graphics engine.
 //
-// Mirrors the real assembly: a base servo rotates the whole arm left/right
-// (pan), a second servo mounted on top of the first tilts the laser tube
-// up/down (tilt) - see B_ServoLaserMotor.ino's rangeX/rangeY.
+// Mirrors the real assembly: a base SG90 servo rotates the whole arm
+// left/right (pan), a second SG90 mounted on top of the first tilts the
+// laser tube up/down (tilt) - see B_ServoLaserMotor.ino.
 // Used both in Demo mode (fed by a local loop) and in Hardware mode
 // (mirrors what is actually being sent to the ESP).
 
-const PAN_RANGE_DEG = 30;  // mirrors rangeX in B_ServoLaserMotor.ino
-const TILT_RANGE_DEG = 30; // mirrors rangeY in B_ServoLaserMotor.ino
+// Both axes are plain SG90 servos (0-180 deg datasheet range); the usable
+// range is kept a safety margin inside that to avoid stalling the gears
+// against the mechanical end-stop. Mirrors B_ServoLaserMotor.ino.
+const SERVO_MIN_DEG = 10;
+const SERVO_MAX_DEG = 170;
+const SERVO_CENTER_DEG = 90;
+const MAX_SPEED_DEG_PER_SEC = 120; // deg/sec of travel at full joystick deflection
+const JOYSTICK_DEADZONE = 0.05;
 
 function shadeColor(hex, factor) {
   const c = hex.replace('#', '');
@@ -73,6 +79,48 @@ function cylinderX(radius, length, segments, baseColor) {
   return wrap;
 }
 
+// Same as cylinderX but standing with its axis along local Y - used for the
+// small round gear boss on top of a servo.
+function cylinderY(radius, length, segments, baseColor) {
+  const wrap = el('grp3d');
+  const segAngle = 360 / segments;
+  const chord = 2 * radius * Math.sin((segAngle * Math.PI / 180) / 2) + 0.6;
+  for (let i = 0; i < segments; i++) {
+    const ang = i * segAngle;
+    const shade = 0.55 + 0.45 * Math.cos((ang - 300) * Math.PI / 180);
+    wrap.appendChild(mkFace(chord, length, `rotateY(${ang}deg) translateZ(${radius}px)`, shadeColor(baseColor, shade)));
+  }
+  [-90, 90].forEach((rot) => {
+    const cap = el('face3d');
+    cap.style.width = cap.style.height = (radius * 2) + 'px';
+    cap.style.left = (-radius) + 'px';
+    cap.style.top = (-radius) + 'px';
+    cap.style.borderRadius = '50%';
+    cap.style.transform = `rotateX(${rot}deg) translateZ(${length / 2}px)`;
+    cap.style.background = shadeColor(baseColor, rot > 0 ? 0.9 : 0.6);
+    wrap.appendChild(cap);
+  });
+  return wrap;
+}
+
+// A stylized SG90: rectangular body, the mounting flange ("ears") partway
+// up the case, and the small round gear boss the horn attaches to on top.
+// w/h/d describe the body only, same convention as box(), so it drops in
+// wherever a plain body box was used before.
+function servoSG90(w, h, d, baseColor) {
+  const wrap = el('grp3d');
+  mount(wrap, box(w, h, d, baseColor), 0, 0, 0);
+
+  const flangeH = Math.max(2, h * 0.09);
+  mount(wrap, box(w * 1.55, flangeH, d, '#20242b'), 0, -h * 0.3, 0);
+
+  const capR = w * 0.22;
+  const capH = h * 0.26;
+  mount(wrap, cylinderY(capR, capH, 12, '#3a4048'), 0, -h / 2 - capH / 2, 0);
+
+  return wrap;
+}
+
 function mount(parent, child, x, y, z, extra) {
   child.style.transform = `translate3d(${x}px,${y}px,${z}px) ${extra || ''}`;
   parent.appendChild(child);
@@ -81,9 +129,8 @@ function mount(parent, child, x, y, z, extra) {
 
 function buildRobot(cam) {
   const CASE = { w: 130, h: 55, d: 95 };
-  const PAN_SERVO = { w: 30, h: 26, d: 26 };
+  const SG90 = { w: 22, h: 23, d: 12 };
   const BRACKET = { w: 14, h: 46, d: 14 };
-  const TILT_SERVO = { w: 32, h: 22, d: 22 };
   const LASER = { r: 11, len: 78 };
   const TIP = { r: 12.5, len: 12 };
 
@@ -98,32 +145,32 @@ function buildRobot(cam) {
   const panPivotY = -CASE.h / 2;
   cam.appendChild(panJoint);
 
-  const panServo = box(PAN_SERVO.w, PAN_SERVO.h, PAN_SERVO.d, '#1565c0');
-  mount(panJoint, panServo, 0, -PAN_SERVO.h / 2, 0);
+  const panServo = servoSG90(SG90.w, SG90.h, SG90.d, '#1565c0');
+  mount(panJoint, panServo, 0, -SG90.h / 2, 0);
 
   const bracket = box(BRACKET.w, BRACKET.h, BRACKET.d, '#66bb6a');
-  mount(panJoint, bracket, 0, -PAN_SERVO.h - BRACKET.h / 2, 0);
+  mount(panJoint, bracket, 0, -SG90.h - BRACKET.h / 2, 0);
 
   // Pivot on top of the bracket - this group rotates for TILT, matching the
   // second servo mounted above the first in the real build.
   const tiltJoint = el('grp3d');
-  const tiltPivotY = -PAN_SERVO.h - BRACKET.h;
+  const tiltPivotY = -SG90.h - BRACKET.h;
   mount(panJoint, tiltJoint, 0, tiltPivotY, 0);
 
-  const tiltServo = box(TILT_SERVO.w, TILT_SERVO.h, TILT_SERVO.d, '#1976d2');
+  const tiltServo = servoSG90(SG90.w, SG90.h, SG90.d, '#1976d2');
   mount(tiltJoint, tiltServo, 0, 0, 0);
 
   const laser = cylinderX(LASER.r, LASER.len, 14, '#7b1fa2');
-  mount(tiltJoint, laser, TILT_SERVO.w / 2 + LASER.len / 2, 0, 0);
+  mount(tiltJoint, laser, SG90.w / 2 + LASER.len / 2, 0, 0);
 
   const tip = cylinderX(TIP.r, TIP.len, 14, '#cfd3d8');
   tip.classList.add('laser-tip');
-  mount(tiltJoint, tip, TILT_SERVO.w / 2 + LASER.len + TIP.len / 2, 0, 0);
+  mount(tiltJoint, tip, SG90.w / 2 + LASER.len + TIP.len / 2, 0, 0);
 
   const beam = cylinderX(2.6, 260, 8, '#ff2d3a');
   beam.classList.add('beam3d');
   beam.style.opacity = 0;
-  mount(tiltJoint, beam, TILT_SERVO.w / 2 + LASER.len + TIP.len + 130, 0, 0);
+  mount(tiltJoint, beam, SG90.w / 2 + LASER.len + TIP.len + 130, 0, 0);
 
   return { panJoint, panPivotY, tiltJoint, tiltPivotY, tip, beam };
 }
@@ -160,25 +207,43 @@ function createRobotView(stageEl) {
   const rig = buildRobot(cam);
 
   let target = { x: 0, y: 0, fire: false };
-  const shown = { x: 0, y: 0, fire: 0 };
+  let panAngle = SERVO_CENTER_DEG;
+  let tiltAngle = SERVO_CENTER_DEG;
+  let fireShown = 0;
+  let lastTs = null;
 
   function render(state) {
     target = state;
   }
 
-  function frame() {
-    shown.x += (target.x - shown.x) * 0.2;
-    shown.y += (target.y - shown.y) * 0.2;
-    shown.fire += ((target.fire ? 1 : 0) - shown.fire) * 0.35;
+  function deadzone(v) {
+    return Math.abs(v) < JOYSTICK_DEADZONE ? 0 : v;
+  }
 
-    const panDeg = shown.x * PAN_RANGE_DEG;
-    const tiltDeg = -shown.y * TILT_RANGE_DEG;
+  // Rate control, mirroring ServoLaserMotor::updateJoystick() in the
+  // firmware: deflection is a speed, integrated over time and clamped to
+  // the servos' safe range, so the aim keeps moving while the stick is held
+  // and simply stops (not wraps) when it reaches the mechanical limit.
+  function frame(ts) {
+    if (lastTs === null) lastTs = ts;
+    const dt = Math.min(0.1, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    panAngle = Math.min(SERVO_MAX_DEG, Math.max(SERVO_MIN_DEG,
+      panAngle + deadzone(target.x) * MAX_SPEED_DEG_PER_SEC * dt));
+    tiltAngle = Math.min(SERVO_MAX_DEG, Math.max(SERVO_MIN_DEG,
+      tiltAngle - deadzone(target.y) * MAX_SPEED_DEG_PER_SEC * dt));
+
+    fireShown += ((target.fire ? 1 : 0) - fireShown) * 0.35;
+
+    const panDeg = panAngle - SERVO_CENTER_DEG;
+    const tiltDeg = tiltAngle - SERVO_CENTER_DEG;
 
     rig.panJoint.style.transform = `translate3d(0,${rig.panPivotY}px,0) rotateY(${panDeg}deg)`;
     rig.tiltJoint.style.transform = `translate3d(0,${rig.tiltPivotY}px,0) rotateX(${tiltDeg}deg)`;
 
-    rig.beam.style.opacity = shown.fire.toFixed(2);
-    rig.tip.classList.toggle('firing', shown.fire > 0.5);
+    rig.beam.style.opacity = fireShown.toFixed(2);
+    rig.tip.classList.toggle('firing', fireShown > 0.5);
 
     requestAnimationFrame(frame);
   }
