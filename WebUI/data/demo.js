@@ -243,7 +243,7 @@ function createRobotView(stageEl) {
     lastTs = ts;
 
     panAngle = Math.min(SERVO_MAX_DEG, Math.max(PAN_MIN_DEG,
-      panAngle + deadzone(target.x) * MAX_SPEED_DEG_PER_SEC * dt));
+      panAngle - deadzone(target.x) * MAX_SPEED_DEG_PER_SEC * dt));
     tiltAngle = Math.min(SERVO_MAX_DEG, Math.max(TILT_MIN_DEG,
       tiltAngle - deadzone(target.y) * MAX_SPEED_DEG_PER_SEC * dt));
 

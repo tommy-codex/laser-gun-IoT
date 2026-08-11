@@ -50,7 +50,7 @@ public:
   // moving while the stick stays pushed. dtSeconds is the time since the
   // last call, used to integrate deflection into degrees moved.
   void updateJoystick(float nx, float ny, float dtSeconds){
-    this->servoX = constrain(this->servoX + nx * this->maxSpeedDegPerSec * dtSeconds, this->panMinDeg, this->servoMaxDeg);
+    this->servoX = constrain(this->servoX - nx * this->maxSpeedDegPerSec * dtSeconds, this->panMinDeg, this->servoMaxDeg);
     this->servoY = constrain(this->servoY + ny * this->maxSpeedDegPerSec * dtSeconds, this->tiltMinDeg, this->servoMaxDeg);
     laserServoX.write(this->servoX);
     laserServoY.write(this->servoY);
