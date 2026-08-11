@@ -248,7 +248,10 @@ function createRobotView(stageEl) {
     const tiltDeg = tiltAngle - SERVO_CENTER_DEG;
 
     rig.panJoint.style.transform = `translate3d(0,${rig.panPivotY}px,0) rotateY(${panDeg}deg)`;
-    rig.tiltJoint.style.transform = `translate3d(0,${rig.tiltPivotY}px,0) rotateX(${tiltDeg}deg)`;
+    // The laser tube extends along local X (see buildRobot), so tilting it
+    // up/down has to rotate around Z, not X - rotating around X is the
+    // tube's own long axis, which just spins it in place without moving it.
+    rig.tiltJoint.style.transform = `translate3d(0,${rig.tiltPivotY}px,0) rotateZ(${-tiltDeg}deg)`;
 
     rig.beam.style.opacity = fireShown.toFixed(2);
     rig.tip.classList.toggle('firing', fireShown > 0.5);
